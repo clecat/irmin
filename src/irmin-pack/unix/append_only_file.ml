@@ -133,7 +133,7 @@ module Make (Io : Io.S) (Errs : Io_errors.S with module Io = Io) = struct
         let open Result_syntax in
         let open Int63.Syntax in
         let s = Buffer.contents rw_perm.buf in
-        let off = t.persisted_end_poff + t.dead_header_size in
+        let off = Io.offset_of_int63 (t.persisted_end_poff + t.dead_header_size) in
         let+ () = Io.write_string t.io ~off s in
         t.persisted_end_poff <-
           t.persisted_end_poff + (String.length s |> Int63.of_int);
@@ -149,7 +149,7 @@ module Make (Io : Io.S) (Errs : Io_errors.S with module Io = Io) = struct
     let off' = off + Int63.of_int len in
     if off' > t.persisted_end_poff then
       raise (Errors.Pack_error `Read_out_of_bounds);
-    let off = off + t.dead_header_size in
+    let off = Io.offset_of_int63 (off + t.dead_header_size) in
     Io.read_exn t.io ~off ~len b
 
   let read_to_string t ~off ~len =
@@ -157,7 +157,7 @@ module Make (Io : Io.S) (Errs : Io_errors.S with module Io = Io) = struct
     let off' = off + Int63.of_int len in
     if off' > t.persisted_end_poff then Error `Read_out_of_bounds
     else
-      let off = off + t.dead_header_size in
+      let off = Io.offset_of_int63 (off + t.dead_header_size) in
       Io.read_to_string t.io ~off ~len
 
   let append_exn t s =

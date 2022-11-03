@@ -28,6 +28,7 @@ module type S = sig
       {!Unix} directly; there is no buffering for example. *)
 
   type t
+  type offset
 
   (** {1 Errors} *)
 
@@ -68,7 +69,7 @@ module type S = sig
 
   (** {2 Write Functions} *)
 
-  val write_string : t -> off:int63 -> string -> (unit, [> write_error ]) result
+  val write_string : t -> off:offset -> string -> (unit, [> write_error ]) result
   (** [write_string t ~off s] writes [s] at [offset] in [t]. *)
 
   val fsync : t -> (unit, [> write_error ]) result
@@ -84,7 +85,7 @@ module type S = sig
   (** {2 Read Functions} *)
 
   val read_to_string :
-    t -> off:int63 -> len:int -> (string, [> read_error ]) result
+    t -> off:offset -> len:int -> (string, [> read_error ]) result
   (** [read_to_string t ~off ~len] are the [len] bytes of [t] at [off]. *)
 
   val read_all_to_string :
@@ -110,6 +111,8 @@ module type S = sig
 
   (** {1 MISC.} *)
 
+  val offset_of_int63 : int63 -> offset
+
   val readonly : t -> bool
   val path : t -> string
   val page_size : int
@@ -119,7 +122,7 @@ module type S = sig
       These functions are equivalents to exising safe ones, but using exceptions
       instead of the result monad for performances reasons. *)
 
-  val read_exn : t -> off:int63 -> len:int -> bytes -> unit
+  val read_exn : t -> off:offset -> len:int -> bytes -> unit
   (** [read_exn t ~off ~len b] reads the [len] bytes of [t] at [off] to [b].
 
       Raises [Errors.Pack_error] and [Errors.RO_not_allowed].
@@ -127,7 +130,7 @@ module type S = sig
       Also raises backend-specific exceptions (e.g. [Unix.Unix_error] for the
       unix backend). *)
 
-  val write_exn : t -> off:int63 -> len:int -> string -> unit
+  val write_exn : t -> off:offset -> len:int -> string -> unit
   (** [write_exn t ~off ~len b] writes the first [len] bytes pf [b] to [t] at
       offset [off].
 

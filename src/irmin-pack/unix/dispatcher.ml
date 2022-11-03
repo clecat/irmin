@@ -220,7 +220,7 @@ module Make (Fm : File_manager.S with module Io = Io.Unix) :
          will be chopped before being passed to [read_exn]. *)
     let len = Int63.to_int len in
     match location with
-    | Prefix -> Io.read_exn (get_prefix t) ~off:poff ~len buf
+    | Prefix -> Io.read_exn (get_prefix t) ~off:(Io.offset_of_int63 poff) ~len buf
     | Suffix -> Suffix.read_exn (Fm.suffix t.fm) ~off:poff ~len buf
 
   let read_bytes_exn t ~f ~off ~len =

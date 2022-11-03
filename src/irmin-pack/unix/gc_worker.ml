@@ -103,7 +103,7 @@ module Make (Args : Gc_args.S) = struct
        to this function. Then at the call to Bytes.unsafe_to_string we give up unique
        ownership to buffer (we do not modify it thereafter) in return for ownership of the
        resulting string, which we pass to write_exn. This usage is safe. *)
-    write_exn ~off:accessor.poff ~len (Bytes.unsafe_to_string buffer)
+    write_exn ~off:(Io.offset_of_int63 accessor.poff) ~len (Bytes.unsafe_to_string buffer)
 
   let create_new_suffix ~root ~generation =
     let path = Irmin_pack.Layout.V3.suffix ~root ~generation in
@@ -307,7 +307,7 @@ module Make (Args : Gc_args.S) = struct
     let path = Irmin_pack.Layout.V3.gc_result ~root ~generation in
     let* io = Io.create ~path ~overwrite:true in
     let out = Irmin.Type.to_json_string gc_output_t output in
-    let* () = Io.write_string io ~off:Int63.zero out in
+    let* () = Io.write_string io ~off:(Io.offset_of_int63 Int63.zero) out in
     let* () = Io.fsync io in
     Io.close io
 

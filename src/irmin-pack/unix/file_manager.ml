@@ -23,18 +23,22 @@ let legacy_io_header_size = 16
 
 module Make
     (Control : Control_file.S with module Io = Io.Unix)
-    (Dict : Append_only_file.S with module Io = Control.Io)
-    (Suffix : Append_only_file.S with module Io = Control.Io)
+    (Dict : Append_only_file.S with module Io = Io.Unix)
+    (Suffix : Append_only_file.S with module Io = Io.Unix)
     (Index : Pack_index.S)
-    (Errs : Io_errors.S with module Io = Control.Io) =
+    (Errs : Io_errors.S with module Io = Io.Unix) =
 struct
+  module Wrap (Input : Io.S) : Io.S = struct
+    include Input
+  end
+
   module Io = Control.Io
   module Control = Control
   module Dict = Dict
   module Suffix = Suffix
   module Index = Index
   module Errs = Errs
-  module Prefix = Io
+  module Prefix = Wrap (Control.Io)
   module Mapping_file = Mapping_file.Make (Io)
 
   type after_reload_consumer = { after_reload : unit -> (unit, Errs.t) result }
@@ -493,7 +497,7 @@ struct
     Errors.finalise (fun _ ->
         Io.close io |> Errs.log_if_error "FM: read_offset_from_legacy_file")
     @@ fun () ->
-    let* s = Io.read_to_string io ~off:Int63.zero ~len:8 in
+    let* s = Io.read_to_string io ~off:(Io.offset_of_int63 Int63.zero) ~len:8 in
     let x = Int63.decode ~off:0 s in
     Ok x
 
@@ -504,7 +508,7 @@ struct
     Errors.finalise (fun _ ->
         Io.close io |> Errs.log_if_error "FM: read_version_from_legacy_file")
     @@ fun () ->
-    let off = Int63.of_int 8 in
+    let off = Control.Io.offset_of_int63 (Int63.of_int 8) in
     let* s = Io.read_to_string io ~off ~len:8 in
     match Version.of_bin s with
     | Some x -> Ok x

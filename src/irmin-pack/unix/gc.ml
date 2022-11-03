@@ -208,7 +208,7 @@ module Make (Args : Gc_args.S) = struct
       let* io = Io.open_ ~path ~readonly:true in
       let* len = Io.read_size io in
       let len = Int63.to_int len in
-      let* string = Io.read_to_string io ~off:Int63.zero ~len in
+      let* string = Io.read_to_string io ~off:(Io.offset_of_int63 Int63.zero) ~len in
       let* () = Io.close io in
       Ok string
     in

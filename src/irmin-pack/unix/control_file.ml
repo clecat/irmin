@@ -69,7 +69,7 @@ module Make (Io : Io.S) = struct
        reworked for [V3]. *)
     assert (String.length s <= Io.page_size);
 
-    Io.write_string io ~off:Int63.zero s
+    Io.write_string io ~off:(Io.offset_of_int63 Int63.zero) s
 
   let read io =
     let open Result_syntax in

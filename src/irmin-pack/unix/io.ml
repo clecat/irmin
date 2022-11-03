@@ -91,6 +91,10 @@ module Unix = struct
     path : string;
   }
 
+  type offset = int63
+
+  let offset_of_int63 t = t
+
   let classify_path p =
     Unix.(
       try
