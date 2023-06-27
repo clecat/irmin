@@ -24,6 +24,8 @@ module Make (Fm : File_manager.S) = struct
     capacity : int;
     cache : (string, int) Hashtbl.t;
     index : (int, string) Hashtbl.t;
+    find_info : (int, int) Hashtbl.t;
+    index_info : (string, int) Hashtbl.t;
     fm : Fm.t;
     mutable last_refill_offset : int63;
   }
@@ -64,6 +66,8 @@ module Make (Fm : File_manager.S) = struct
 
   let index t v =
     [%log.debug "[dict] index %S" v];
+    let n = try Hashtbl.find t.index_info v with Not_found -> 0 in
+    Hashtbl.replace t.index_info v (n + 1);
     try Some (Hashtbl.find t.cache v)
     with Not_found ->
       let id = Hashtbl.length t.cache in
@@ -76,6 +80,8 @@ module Make (Fm : File_manager.S) = struct
 
   let find t id =
     [%log.debug "[dict] find %d" id];
+    let n = try Hashtbl.find t.find_info id with Not_found -> 0 in
+    Hashtbl.replace t.find_info id (n + 1);
     let v = try Some (Hashtbl.find t.index id) with Not_found -> None in
     v
 
@@ -85,13 +91,55 @@ module Make (Fm : File_manager.S) = struct
     let open Result_syntax in
     let cache = Hashtbl.create 997 in
     let index = Hashtbl.create 997 in
+    let find_info = Hashtbl.create 997 in
+    let index_info = Hashtbl.create 997 in
     let last_refill_offset = Int63.zero in
     let t =
-      { capacity = default_capacity; index; cache; fm; last_refill_offset }
+      { capacity = default_capacity; index; cache; find_info; index_info; fm; last_refill_offset }
     in
     let* () = refill t in
     Fm.register_dict_consumer fm ~after_reload:(fun () -> refill t);
     Ok t
 
-  let close _ = ()
+  let close t =
+    let find_fd = 
+      Unix.out_channel_of_descr @@ Unix.openfile "/tmp/irmin_find_debug_info" Unix.[ O_WRONLY; O_CREAT; O_TRUNC ] 0o644
+    in
+    let find_condensed = Hashtbl.create 10 in
+    Hashtbl.iter
+      (fun _ b ->
+        let n = try Hashtbl.find find_condensed b with Not_found -> 0 in
+        Hashtbl.replace find_condensed b (n + 1);
+      ) t.find_info;
+    let fmt = Format.formatter_of_out_channel find_fd in
+    let x = Hashtbl.length t.index - Hashtbl.length t.find_info in
+    Fmt.pf fmt "%d %d\n" 0 x;
+    let l = ref [] in
+    Hashtbl.iter
+      (fun a b ->
+        l := (a, b) :: !l;
+      ) find_condensed;
+    let l = List.sort (fun (x, _) (y, _) -> Int.compare x y) !l in
+    List.iter (fun (a, b) -> Fmt.pf fmt "%d %d\n" a b) l;
+
+    let index_fd = 
+      Unix.out_channel_of_descr @@ Unix.openfile "/tmp/irmin_index_debug_info" Unix.[ O_WRONLY; O_CREAT; O_TRUNC ] 0o644
+    in
+    let index_condensed = Hashtbl.create 10 in
+    Hashtbl.iter
+      (fun _ b ->
+        let n = try Hashtbl.find index_condensed b with Not_found -> 0 in
+        Hashtbl.replace index_condensed b (n + 1);
+      ) t.index_info;
+    let fmt = Format.formatter_of_out_channel index_fd in
+    let x = Hashtbl.length t.index - Hashtbl.length t.index_info in
+    Fmt.pf fmt "%d %d\n" 0 x;
+    let l = ref [] in
+    Hashtbl.iter
+      (fun a b ->
+        l := (a, b) :: !l;
+      ) index_condensed;
+    let l = List.sort (fun (x, _) (y, _) -> Int.compare x y) !l in
+    List.iter (fun (a, b) -> Fmt.pf fmt "%d %d\n" a b) l;
+    ()
 end
