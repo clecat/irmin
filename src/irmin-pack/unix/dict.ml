@@ -21,7 +21,6 @@ module Make (Fm : File_manager.S) = struct
   module Fm = Fm
 
   type t = {
-    capacity : int;
     cache : (string, int) Hashtbl.t;
     index : (int, string) Hashtbl.t;
     find_info : (int, int) Hashtbl.t;
@@ -71,12 +70,10 @@ module Make (Fm : File_manager.S) = struct
     try Some (Hashtbl.find t.cache v)
     with Not_found ->
       let id = Hashtbl.length t.cache in
-      if id > t.capacity then None
-      else (
-        append_string t v;
-        Hashtbl.add t.cache v id;
-        Hashtbl.add t.index id v;
-        Some id)
+      append_string t v;
+      Hashtbl.add t.cache v id;
+      Hashtbl.add t.index id v;
+      Some id
 
   let find t id =
     [%log.debug "[dict] find %d" id];
@@ -84,9 +81,6 @@ module Make (Fm : File_manager.S) = struct
     Hashtbl.replace t.find_info id (n + 1);
     let v = try Some (Hashtbl.find t.index id) with Not_found -> None in
     v
-
-  let default_capacity = 500_000
-
   let v fm =
     let open Result_syntax in
     let cache = Hashtbl.create 997 in
@@ -95,7 +89,7 @@ module Make (Fm : File_manager.S) = struct
     let index_info = Hashtbl.create 997 in
     let last_refill_offset = Int63.zero in
     let t =
-      { capacity = default_capacity; index; cache; find_info; index_info; fm; last_refill_offset }
+      { index; cache; find_info; index_info; fm; last_refill_offset }
     in
     let* () = refill t in
     Fm.register_dict_consumer fm ~after_reload:(fun () -> refill t);
