@@ -22,41 +22,58 @@ module Make (H : Hashtbl.HashedType) = struct
   module Q = struct
     type 'a node = {
       value : 'a;
+      mutable visited : bool;
       mutable next : 'a node option;
       mutable prev : 'a node option;
     }
 
     type 'a t = {
-      mutable first : 'a node option;
-      mutable last : 'a node option;
+      mutable head : 'a node option;
+      mutable tail : 'a node option;
+      mutable hand : 'a node option;
     }
+
 
     let detach t n =
       let np = n.prev and nn = n.next in
       (match np with
-      | None -> t.first <- nn
+      | None -> t.tail <- nn
       | Some x ->
           x.next <- nn;
           n.prev <- None);
       match nn with
-      | None -> t.last <- np
+      | None -> t.head <- np
       | Some x ->
           x.prev <- np;
           n.next <- None
 
     let append t n =
       let on = Some n in
-      match t.last with
+      match t.head with
       | Some x as l ->
           x.next <- on;
-          t.last <- on;
+          t.head <- on;
           n.prev <- l
       | None ->
-          t.first <- on;
-          t.last <- on
+          t.tail <- on;
+          t.head <- on
 
-    let node x = { value = x; prev = None; next = None }
-    let create () = { first = None; last = None }
+    let rec eject t on =
+      match (on, t.tail) with
+      | None, None -> None
+      | Some n, _ | None, Some n -> (
+          match n.visited with
+          | true ->
+              n.visited <- false;
+              eject t n.next
+          | false ->
+              t.hand <- n.next;
+              detach t n;
+              Some n.value)
+
+    let eject t = eject t t.hand
+    let node x = { value = x; prev = None; next = None; visited = false }
+    let create () = { head = None; tail = None; hand = None }
 
     let iter t f =
       let rec aux f = function
@@ -66,11 +83,12 @@ module Make (H : Hashtbl.HashedType) = struct
             aux f next
         | _ -> ()
       in
-      aux f t.first
+      aux f t.head
 
     let clear t =
-      t.first <- None;
-      t.last <- None
+      t.head <- None;
+      t.tail <- None;
+      t.head <- None
   end
 
   type key = HT.key
@@ -92,8 +110,11 @@ module Make (H : Hashtbl.HashedType) = struct
     in
     { cap; w = 0; ht = HT.create ht_cap; q = Q.create () }
 
+  let eject t =
+    match Q.eject t.q with None -> () | Some (k, _) -> HT.remove t.ht k
+  
   let drop t =
-    match t.q.first with
+    match t.q.head with
     | None -> None
     | Some ({ Q.value = k, v; _ } as n) ->
         t.w <- t.w - 1;
@@ -123,28 +144,20 @@ module Make (H : Hashtbl.HashedType) = struct
     | Capped c ->
         add t k v;
         if weight t > c then
-          let _ = drop t in
+          let _ = eject t in
           ()
-
-  let promote t k =
-    try
-      let n = HT.find t.ht k in
-      Q.(
-        detach t.q n;
-        append t.q n)
-    with Not_found -> ()
 
   let find t k =
     let v = HT.find t.ht k in
-    promote t k;
+    v.visited <- true;
     snd v.value
-
+  
   let mem t k =
-    match HT.mem t.ht k with
-    | false -> false
-    | true ->
-        promote t k;
-        true
+    try
+      let v = HT.find t.ht k in
+      v.visited <- true;
+      true
+    with Not_found -> false
 
   let iter t f = Q.iter t.q (fun (k, v) -> f k v)
 
