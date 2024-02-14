@@ -122,6 +122,9 @@ module Make (H : Hashtbl.HashedType) = struct
         t.w <- t.w - 1;
         HT.remove t.ht k;
         Q.detach t.q n;
+        (match t.q.hand with
+        | None -> ()
+        | Some n -> if n.next = None then n.next <- t.q.head);
         Some v
 
   let add t k v =
