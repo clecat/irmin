@@ -115,6 +115,15 @@ module Make (H : Hashtbl.HashedType) = struct
       t.w <- t.w - 1;
       HT.remove t.ht k
   
+  let drop t =
+    match t.q.head with
+    | None -> None
+    | Some ({ Q.value = k, v; _ } as n) ->
+        t.w <- t.w - 1;
+        HT.remove t.ht k;
+        Q.detach t.q n;
+        Some v
+
   let add t k v =
     let add t k v =
       let n = Q.node (k, v) in
