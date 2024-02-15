@@ -111,22 +111,12 @@ module Make (H : Hashtbl.HashedType) = struct
     { cap; w = 0; ht = HT.create ht_cap; q = Q.create () }
 
   let eject t =
-    match Q.eject t.q with None -> () | Some (k, _) -> 
+    let e = Q.eject t.q in
+    (match e with None -> () | Some (k, _) -> 
       t.w <- t.w - 1;
-      HT.remove t.ht k
+      HT.remove t.ht k);
+    e
   
-  let drop t =
-    match t.q.head with
-    | None -> None
-    | Some ({ Q.value = k, v; _ } as n) ->
-        t.w <- t.w - 1;
-        HT.remove t.ht k;
-        Q.detach t.q n;
-        (match t.q.hand with
-        | None -> ()
-        | Some n -> if n.next = None then n.next <- t.q.head);
-        Some v
-
   let add t k v =
     let add t k v =
       let n = Q.node (k, v) in
@@ -139,7 +129,7 @@ module Make (H : Hashtbl.HashedType) = struct
     | Uncapped -> add t k v
     | Capped c ->
         if weight t > c then
-          eject t;
+          let _ = eject t in ();
         add t k v
 
   let find t k =

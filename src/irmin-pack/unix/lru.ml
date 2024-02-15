@@ -73,12 +73,13 @@ let add t k w v =
     match t.weight_limit with
     | None -> add t k v 0
     | Some limit ->
-        add t k v (resolve_weight w);
-        while t.total_weight > limit do
-          match Internal.drop t.lru with
+        let w = (resolve_weight w) in
+        while t.total_weight + w > limit do
+          match Internal.eject t.lru with
           | None -> t.total_weight <- 0
-          | Some n -> t.total_weight <- t.total_weight - n.weight
-        done
+          | Some (_, n) -> t.total_weight <- t.total_weight - n.weight
+        done;
+        add t k v w
 
 let v v = v.v
 let find { lru; _ } k = Internal.find lru k |> v
