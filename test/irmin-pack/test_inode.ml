@@ -144,7 +144,7 @@ struct
       let fm = get_fm config in
       let dict = Dict.v fm |> Errs.raise_if_error in
       let dispatcher = Dispatcher.v fm |> Errs.raise_if_error in
-      let lru = Irmin_pack_unix.Lru.create config in
+      let lru = Irmin_pack_unix.create config in
       let store = Inode.v ~config ~fm ~dict ~dispatcher ~lru in
       let store_contents =
         Contents_store.v ~config ~fm ~dict ~dispatcher ~lru

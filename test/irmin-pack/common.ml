@@ -157,7 +157,7 @@ struct
     (* open the index created by the fm. *)
     let index = File_manager.index fm in
     let dict = Dict.v fm |> Errs.raise_if_error in
-    let lru = Irmin_pack_unix.Lru.create config in
+    let lru = Irmin_pack_unix.Lru.create (fun _ -> "") config in
     let pack = Pack.v ~config ~fm ~dict ~dispatcher ~lru in
     (f := fun () -> File_manager.flush fm |> Errs.raise_if_error);
     { name; index; pack; dict; fm } |> Lwt.return

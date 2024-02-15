@@ -39,7 +39,7 @@ let create config =
     | None -> (Irmin_pack.Conf.lru_size config, None)
     | Some b -> (-42, Some b)
   in
-  let lru = Internal.create lru_size in
+  let lru = Internal.create (Int63.to_string) lru_size in
   { lru; weight_limit; total_weight = 0 }
 
 let lru_enabled t = match t.weight_limit with None -> true | Some x -> x > 0

@@ -16,6 +16,8 @@
 
 (* Extracted from https://github.com/pqwy/lru *)
 
+let i = ref 0
+
 module Make (H : Hashtbl.HashedType) = struct
   module HT = Hashtbl.Make (H)
 
@@ -94,6 +96,8 @@ module Make (H : Hashtbl.HashedType) = struct
   type key = HT.key
 
   type 'a t = {
+    fd: Stdlib.out_channel;
+    f: key -> string;
     ht : (key * 'a) Q.node HT.t;
     q : (key * 'a) Q.t;
     mutable cap : cap;
@@ -104,11 +108,13 @@ module Make (H : Hashtbl.HashedType) = struct
 
   let weight t = t.w
 
-  let create cap =
+  let create f cap =
     let cap, ht_cap =
       if cap < 0 then (Uncapped, 65536) else (Capped cap, cap)
     in
-    { cap; w = 0; ht = HT.create ht_cap; q = Q.create () }
+    let fd = Stdlib.open_out ("/tmp/sieve-log-" ^ string_of_int !i) in
+    incr i;
+    { cap; w = 0; ht = HT.create ht_cap; q = Q.create (); fd; f }
 
   let eject t =
     let e = Q.eject t.q in
@@ -118,6 +124,7 @@ module Make (H : Hashtbl.HashedType) = struct
     e
   
   let add t k v =
+    Stdlib.output_string t.fd (Printf.sprintf "add %s\n" (t.f k));
     let add t k v =
       let n = Q.node (k, v) in
       t.w <- t.w + 1;
@@ -133,6 +140,7 @@ module Make (H : Hashtbl.HashedType) = struct
         add t k v
 
   let find t k =
+    Stdlib.output_string t.fd (Printf.sprintf "find %s\n" (t.f k));
     let v = HT.find t.ht k in
     v.visited <- true;
     snd v.value
