@@ -35,5 +35,5 @@ type sub = {
 }
 (** Subcommand. *)
 
-val create_command : sub -> command
+val create_command : (env:eio -> sub) -> command
 (** Build a subcommand. *)
