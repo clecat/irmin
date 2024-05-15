@@ -297,6 +297,16 @@ let help =
   Term.(const help $ const ())
 
 let () =
+  Eio_main.run @@ fun env ->
+  Eio.Switch.run @@ fun sw ->
+  let env =
+    object
+      method cwd = Eio.Stdenv.cwd env
+      method clock = Eio.Stdenv.clock env
+      method sw = sw
+    end
+  in
+  let config = config ~env:(env :> Irmin_cli.eio) in
   Stdlib.exit
   @@ Cmd.eval
   @@ Cmd.group ~default:help (Cmd.info "irmin-client")
