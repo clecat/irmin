@@ -62,6 +62,7 @@ val key :
   ?docs:string ->
   ?docv:string ->
   ?doc:string ->
+  ?typ:'a Typ.t ->
   spec:Spec.t ->
   string ->
   'a Type.t ->
@@ -86,7 +87,6 @@ val key' :
   ?docs:string ->
   ?docv:string ->
   ?doc:string ->
-  ?allow_duplicate:bool ->
   ?typ:'a Typ.t ->
   spec:Spec.t ->
   typename:string ->

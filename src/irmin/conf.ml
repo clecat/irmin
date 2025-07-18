@@ -101,7 +101,8 @@ type t = Spec.t * Univ.t M.t
 
 let spec = fst
 
-let key ?docs ?docv ?doc ~spec name ty default =
+let key' ?docs ?docv ?doc ?typ ~spec ~typename ~to_string ~of_string
+    ~of_json_string name default =
   let () =
     String.iter
       (function
@@ -133,15 +134,15 @@ let key ?docs ?docv ?doc ~spec name ty default =
       Spec.update spec name (K k);
       k
 
-let key ?docs ?docv ?doc ?allow_duplicate ?typ ~spec name ty default =
+let key ?docs ?docv ?doc ?typ ~spec name ty default =
   let to_string = Type.to_string ty in
   let typename =
     Fmt.str "%a" Type.pp_ty ty |> Astring.String.filter (fun c -> c <> '\n')
   in
   let of_string = Type.of_string ty in
   let of_json_string = Type.of_json_string ty in
-  key' ?docs ?docv ?doc ?allow_duplicate ?typ ~spec ~typename ~to_string
-    ~of_json_string ~of_string name default
+  key' ?docs ?docv ?doc ?typ ~spec ~typename ~to_string ~of_json_string
+    ~of_string name default
 
 let name t = t.name
 let doc t = t.doc

@@ -19,6 +19,8 @@ open Cmdliner
 open Resolver
 module Graphql = Irmin_graphql_unix
 
+type eio = Import.eio
+
 let () = Irmin.Backend.Watch.set_listen_dir_hook Irmin_watcher.hook
 
 let info (type a) (module S : Irmin.Generic_key.S with type Schema.Info.t = a)
@@ -51,7 +53,8 @@ let term_info title ~doc ~man =
   Cmd.info ~sdocs:global_option_section ~docs:global_option_section ~doc ~man
     title
 
-type command = unit Cmd.t
+type term = env:eio -> unit Term.t
+type command = env:eio -> unit Cmd.t
 
 type sub = {
   name : string;
@@ -925,7 +928,31 @@ let default_help =
   in
   Cmd.info "irmin" ~version:Irmin.version ~sdocs:global_option_section ~doc ~man
 
-let default_term =
+let common_commands =
+  [
+    init;
+    get;
+    set;
+    remove;
+    list;
+    tree;
+    clone;
+    fetch;
+    merge;
+    pull;
+    push;
+    snapshot;
+    revert;
+    watch;
+    dot;
+    graphql;
+    server;
+    options;
+    branches;
+    log;
+  ]
+
+let default ~env =
   let usage () =
     Fmt.pr
       "usage: irmin [--version]\n\
@@ -943,9 +970,9 @@ let default_term =
   in
   Term.(mk usage $ const ())
 
-let commands = List.map create_command commands
+let commands = List.map create_command (help :: common_commands)
 
-let run y =
+let run ~default:x y =
   Eio_main.run @@ fun env ->
   Lwt_eio.with_event_loop ~clock:env#clock @@ fun _ ->
   Irmin.Backend.Watch.set_listen_dir_hook Irmin_watcher.hook;
@@ -957,7 +984,7 @@ let run y =
       method sw = sw
     end
   in
-  let run cmd = cmd ~env in
-  match deprecated_eval_choice (run x) (List.map run y) with
-  | `Error _ -> exit 1
-  | _ -> ()
+  let y = List.map (fun cmd -> cmd ~env) y in
+  match Cmd.eval (Cmd.group ~default:(x ~env) default_help y) with
+  | 0 -> ()
+  | _ -> exit 1

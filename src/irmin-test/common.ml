@@ -230,9 +230,7 @@ module Make_helpers (S : Generic_key) = struct
               | None -> "test_" ^ id
               | Some v -> v ^ "_" ^ id
             in
-            let v =
-              Irmin.Type.of_string (Conf.ty k) root_value |> Result.get_ok
-            in
+            let v = Conf.of_string k root_value |> Result.get_ok in
             Conf.add config k v
       in
       let config = generate_random_root x.config in
